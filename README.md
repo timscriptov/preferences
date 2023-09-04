@@ -2,6 +2,23 @@
 
 # Preferences library Multiplatform
 
+## Add it in your root build.gradle at the end of repositories:
+```groovy
+    allprojects {
+        repositories {
+            //...
+            maven { url 'https://jitpack.io' }
+        }
+    }
+```
+
+## Add the dependency
+```groovy
+    dependencies {
+        implementation 'com.github.TimScriptov:preferences:Tag'
+    }
+```
+
 ## Init:
 ```kotlin
     Preferences(File("dirPath"), "prefName").init()
