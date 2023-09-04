@@ -3,6 +3,7 @@ package com.mcal.preferences
 import com.mcal.preferences.utils.Extensions.formatJson
 import com.mcal.preferences.utils.Extensions.tryDeserialize
 import com.mcal.preferences.utils.FileHelper
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer
@@ -25,23 +26,19 @@ class Preferences(
      * Read content from data file
      */
     fun init() {
-        try {
-            val prefDir = mPrefDir
-            if (prefDir != null) {
-                if (!prefDir.exists() && !prefDir.mkdir()) {
-                    return
-                }
-                val prefFile = mPrefFile
-                if (prefFile != null) {
-                    if (!prefFile.exists() && !prefFile.createNewFile()) {
-                        println("Cannot create memory file")
-                    }
-                    loadJSON(prefFile)
-                    checkJson()
-                }
+        val prefDir = mPrefDir
+        if (prefDir != null) {
+            if (!prefDir.exists() && !prefDir.mkdir()) {
+                return
             }
-        } catch (e: IOException) {
-            e.printStackTrace()
+            val prefFile = mPrefFile
+            if (prefFile != null) {
+                if (!prefFile.exists() && !prefFile.createNewFile()) {
+                    println("Cannot create memory file")
+                }
+                loadJSON(prefFile)
+                checkJson()
+            }
         }
     }
 
@@ -51,7 +48,7 @@ class Preferences(
     @Throws(IOException::class)
     private fun loadJSON(file: File) {
         mJsonObject = runCatching {
-            val content = FileHelper.readFile(file)
+            val content = FileHelper.readText(file)
             Json.parseToJsonElement(content) as JsonObject
         }.getOrElse {
             buildJsonObject { }
@@ -117,11 +114,14 @@ class Preferences(
          * Write each change on the file
          */
         private fun updateMemory() {
-            val prefFile = mPrefFile
-            if (prefFile != null) {
-                val json = mJsonObject
-                if (json != null) {
-                    FileHelper.writeToFile(prefFile, json.toString().formatJson())
+            runBlocking {
+                val prefFile = mPrefFile
+                if (prefFile != null) {
+                    val json = mJsonObject
+                    if (json != null) {
+                        val jsonString = json.toString().formatJson()
+                        FileHelper.writeTextAsync(prefFile, jsonString)
+                    }
                 }
             }
         }

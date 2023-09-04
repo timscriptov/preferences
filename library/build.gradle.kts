@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0-RC")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 }
 
 tasks.withType<JavaCompile> {
@@ -13,7 +14,7 @@ tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
-val releaseVersion = "1.0.0"
+val releaseVersion = "1.0.1"
 
 publishing {
     publications {
