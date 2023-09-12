@@ -1,6 +1,13 @@
 plugins {
-    kotlin("jvm")
+    java
     id("maven-publish")
+    kotlin("jvm")
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven { url = uri("https://www.jitpack.io" ) }
 }
 
 dependencies {
@@ -8,21 +15,16 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 }
 
-tasks.withType<JavaCompile> {
-    options.compilerArgs.add("-Xlint:unchecked")
-    options.isIncremental = true
-    options.encoding = "UTF-8"
-}
-
-val releaseVersion = "1.0.1"
-
 publishing {
     publications {
-        create<MavenPublication>("release") {
-            from(components["java"])
+        register<MavenPublication>("release") {
             groupId = "com.mcal"
             artifactId = "preferences"
-            version = releaseVersion
+            version = "1.0.2"
+
+            afterEvaluate {
+                from(components["java"])
+            }
         }
     }
 }
