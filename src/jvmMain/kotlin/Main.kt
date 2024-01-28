@@ -9,6 +9,11 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import java.awt.Dimension
+import java.io.File
+
+fun getWorkingDir(): File {
+    return File(PreferenceDelegate::class.java.protectionDomain.codeSource.location.toURI().path).parentFile
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,8 +27,15 @@ fun App() {
 }
 
 fun main() = application {
+    var test by stringDelegate("test", "def")
+    println(test)
+    test = "lol"
+    println(test)
+    val test2 by stringDelegate("test", "def")
+    println(test2)
+
     Window(
-        title = "ApkParser",
+        title = "Ex Preferences",
         state = rememberWindowState(width = 800.dp, height = 600.dp),
         onCloseRequest = ::exitApplication,
     ) {
