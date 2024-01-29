@@ -140,6 +140,8 @@ open class PreferencesManager(
      * @param key of values to remove
      */
     fun remove(key: String) {
+        mChars = removeValue(mChars, key)
+        mBytes = removeValue(mBytes, key)
         mIntegers = removeValue(mIntegers, key)
         mStrings = removeValue(mStrings, key)
         mFloats = removeValue(mFloats, key)
@@ -160,6 +162,14 @@ open class PreferencesManager(
         when (c) {
             Int::class.java -> {
                 mIntegers = removeValue(mIntegers, key)
+            }
+
+            Char::class.java -> {
+                mChars = removeValue(mChars, key)
+            }
+
+            Byte::class.java -> {
+                mBytes = removeValue(mBytes, key)
             }
 
             Float::class.java -> {
@@ -329,20 +339,44 @@ open class PreferencesManager(
         }
     }
 
+    /**
+     * Get Char Value
+     *
+     * @param key          of value
+     * @param defaultValue if absent
+     */
     fun getChar(key: String, defaultValue: Char): Char {
         return mChars?.get(key)?.jsonPrimitive?.content?.first() ?: defaultValue
     }
 
+    /**
+     * Save Char Value
+     *
+     * @param key   of value
+     * @param value to store
+     */
     fun putChar(key: String, value: Char) {
         mChars = putValue(mChars, key, value).also {
             updateJson(CHARS, it)
         }
     }
 
+    /**
+     * Get Byte Value
+     *
+     * @param key          of value
+     * @param defaultValue if absent
+     */
     fun getByte(key: String, defaultValue: Byte): Byte {
         return mBytes?.get(key)?.jsonPrimitive?.content?.toByte() ?: defaultValue
     }
 
+    /**
+     * Save Byte Value
+     *
+     * @param key   of value
+     * @param value to store
+     */
     fun putByte(key: String, value: Byte) {
         mBytes = putValue(mBytes, key, value).also {
             updateJson(BYTES, it)
