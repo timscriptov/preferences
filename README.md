@@ -35,6 +35,7 @@ dependencies {
     manager.getLong("key", defaultValue = 0L)
     manager.getObject("key", defaultValue = Date())
     manager.getDouble("key", defaultValue = 0.0)
+    manager.getShort("key", defaultValue = 0)
 ```
 
 ## Put:
@@ -49,4 +50,5 @@ dependencies {
     manager.putLong("key", value = 0L)
     manager.putObject("key", value = Date())
     manager.putDouble("key", value = 0.0)
+    manager.putShort("key", value = 0.0)
 ```

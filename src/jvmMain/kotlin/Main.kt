@@ -106,6 +106,16 @@ fun testIterator() {
     intIterator?.forEach { item ->
         println("       Key: ${item?.key}, Value: ${item?.value}")
     }
+    println("   LONG:")
+    val longIterator = manager.iterator(Long::class.java)
+    longIterator?.forEach { item ->
+        println("       Key: ${item?.key}, Value: ${item?.value}")
+    }
+    println("   SHORT:")
+    val shortIterator = manager.iterator(Short::class.java)
+    shortIterator?.forEach { item ->
+        println("       Key: ${item?.key}, Value: ${item?.value}")
+    }
 }
 
 class Test {
@@ -173,9 +183,9 @@ fun intTest() {
 }
 
 fun arrayTest() {
-    var test by listDelegate("test", listOf("1", "2", "3"))
+    var test by listDelegate("test2", listOf(1, 2, 3))
     println(test)
-    test = listOf("4", "5", "6")
+    test = listOf(4, 5, 6)
     println(test)
     val test2 by listDelegate("test", listOf("1", "2", "3"))
     println(test2)

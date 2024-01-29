@@ -20,7 +20,7 @@ publishing {
         register<MavenPublication>("release") {
             groupId = "com.mcal"
             artifactId = "preferences"
-            version = "1.0.3"
+            version = "1.0.4"
 
             afterEvaluate {
                 from(components["java"])

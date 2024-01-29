@@ -3,7 +3,7 @@ import java.io.Serializable
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-fun listDelegate(key: String, defaultValue: List<String>) = PreferencePrimitiveDelegate(key, defaultValue)
+fun <T>listDelegate(key: String, defaultValue: List<T>) = PreferencePrimitiveDelegate(key, defaultValue)
 fun stringDelegate(key: String, defaultValue: String) = PreferencePrimitiveDelegate(key, defaultValue)
 fun charDelegate(key: String, defaultValue: Char) = PreferencePrimitiveDelegate(key, defaultValue)
 fun byteDelegate(key: String, defaultValue: Byte) = PreferencePrimitiveDelegate(key, defaultValue)

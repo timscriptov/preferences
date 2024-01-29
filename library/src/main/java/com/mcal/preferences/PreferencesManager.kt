@@ -15,31 +15,35 @@ open class PreferencesManager(
     private val name: String
 ) {
     companion object {
-        private const val INTEGERS = "integers"
+        private const val ARRAYS = "arrays"
         private const val STRINGS = "strings"
         private const val CHARS = "chars"
         private const val BYTES = "bytes"
         private const val BOOLEANS = "booleans"
+        private const val LONGS = "longs"
+        private const val INTEGERS = "integers"
         private const val FLOATS = "floats"
         private const val DOUBLES = "doubles"
-        private const val LONGS = "longs"
+        private const val SHORTS = "shorts"
         private const val OBJECTS = "objects"
-        private const val ARRAYS = "arrays"
     }
 
     private val mJson = Json { prettyPrint = true }
 
     private var mJsonObject = buildJsonObject { }
-    private var mIntegers: JsonObject? = null
+
+    private var mArrays: JsonObject? = null
     private var mStrings: JsonObject? = null
     private var mChars: JsonObject? = null
     private var mBytes: JsonObject? = null
     private var mBooleans: JsonObject? = null
+    private var mLongs: JsonObject? = null
+    private var mIntegers: JsonObject? = null
     private var mFloats: JsonObject? = null
     private var mDoubles: JsonObject? = null
-    private var mLongs: JsonObject? = null
+    private var mShorts: JsonObject? = null
     private var mObjects: JsonObject? = null
-    private var mArrays: JsonObject? = null
+
 
     /**
      * Read content from data file
@@ -75,16 +79,17 @@ open class PreferencesManager(
      * Check json keys
      */
     private fun checkJson() {
-        mIntegers = mIntegers ?: ifNotExist(INTEGERS)
+        mArrays = mArrays ?: ifNotExist(ARRAYS)
         mStrings = mStrings ?: ifNotExist(STRINGS)
         mChars = mChars ?: ifNotExist(CHARS)
         mBytes = mBytes ?: ifNotExist(BYTES)
         mBooleans = mBooleans ?: ifNotExist(BOOLEANS)
+        mLongs = mLongs ?: ifNotExist(LONGS)
+        mIntegers = mIntegers ?: ifNotExist(INTEGERS)
         mFloats = mFloats ?: ifNotExist(FLOATS)
         mDoubles = mDoubles ?: ifNotExist(DOUBLES)
-        mLongs = mLongs ?: ifNotExist(LONGS)
+        mShorts = mShorts ?: ifNotExist(SHORTS)
         mObjects = mObjects ?: ifNotExist(OBJECTS)
-        mArrays = mArrays ?: ifNotExist(ARRAYS)
     }
 
     /**
@@ -140,15 +145,17 @@ open class PreferencesManager(
      * @param key of values to remove
      */
     fun remove(key: String) {
+        mArrays = removeValue(mArrays, key)
+        mStrings = removeValue(mStrings, key)
         mChars = removeValue(mChars, key)
         mBytes = removeValue(mBytes, key)
+        mBooleans = removeValue(mBooleans, key)
+        mLongs = removeValue(mLongs, key)
         mIntegers = removeValue(mIntegers, key)
-        mStrings = removeValue(mStrings, key)
         mFloats = removeValue(mFloats, key)
         mDoubles = removeValue(mDoubles, key)
-        mBooleans = removeValue(mBooleans, key)
+        mShorts = removeValue(mShorts, key)
         mObjects = removeValue(mObjects, key)
-        mArrays = removeValue(mArrays, key)
         updateMemory()
     }
 
@@ -160,8 +167,12 @@ open class PreferencesManager(
      */
     fun remove(key: String, c: Class<Any>) {
         when (c) {
-            Int::class.java -> {
-                mIntegers = removeValue(mIntegers, key)
+            List::class.java -> {
+                mArrays = removeValue(mArrays, key)
+            }
+
+            String::class.java -> {
+                mStrings = removeValue(mStrings, key)
             }
 
             Char::class.java -> {
@@ -172,28 +183,28 @@ open class PreferencesManager(
                 mBytes = removeValue(mBytes, key)
             }
 
-            Float::class.java -> {
-                mFloats = removeValue(mFloats, key)
-            }
-
             Boolean::class.java -> {
                 mBooleans = removeValue(mBooleans, key)
-            }
-
-            String::class.java -> {
-                mStrings = removeValue(mStrings, key)
-            }
-
-            Double::class.java -> {
-                mDoubles = removeValue(mDoubles, key)
             }
 
             Long::class.java -> {
                 mLongs = removeValue(mLongs, key)
             }
 
-            List::class.java -> {
-                mArrays = removeValue(mArrays, key)
+            Int::class.java -> {
+                mIntegers = removeValue(mIntegers, key)
+            }
+
+            Float::class.java -> {
+                mFloats = removeValue(mFloats, key)
+            }
+
+            Double::class.java -> {
+                mDoubles = removeValue(mDoubles, key)
+            }
+
+            Short::class.java -> {
+                mShorts = removeValue(mShorts, key)
             }
 
             else -> {
@@ -220,16 +231,18 @@ open class PreferencesManager(
     /**
      * Iterate a kind of values (String, Boolean , Integer ..)
      */
-    fun <T> iterator(c: Class<T>): MutableIterator<Item<T>?>? {
+    fun <T : Any> iterator(c: Class<T>): MutableIterator<Item<T>?>? {
         val obj: JsonObject? = when (c) {
+            List::class.java -> mArrays
+            String::class.java -> mStrings
             Char::class.java -> mChars
             Byte::class.java -> mBytes
+            Boolean::class.java -> mBooleans
+            Long::class.java -> mLongs
             Int::class.java -> mIntegers
             Float::class.java -> mFloats
-            Boolean::class.java -> mBooleans
-            String::class.java -> mStrings
             Double::class.java -> mDoubles
-            List::class.java -> mArrays
+            Short::class.java -> mShorts
             else -> mObjects
         }
 
@@ -244,15 +257,17 @@ open class PreferencesManager(
                 override fun next(): Item<T> {
                     val key = keysIterator.next()
                     val value = when (c) {
+                        List::class.java -> getList(key, emptyList<String>()) as? T
+                        String::class.java -> getString(key, "") as? T
                         Char::class.java -> getChar(key, ' ') as? T
                         Byte::class.java -> getByte(key, "0".toByte()) as? T
+                        Boolean::class.java -> getBoolean(key, false) as? T
+                        Long::class.java -> getLong(key, 0L) as? T
                         Int::class.java -> getInt(key, 0) as? T
                         Float::class.java -> getFloat(key, 0f) as? T
-                        Boolean::class.java -> getBoolean(key, false) as? T
-                        String::class.java -> getString(key, "") as? T
                         Double::class.java -> getDouble(key, 0.0) as? T
-                        List::class.java -> getList(key, emptyList()) as? T
-                        else -> getObject(key, null) as? T
+                        Short::class.java -> getShort(key, 0) as? T
+                        else -> getObject(key, null)
                     }
                     return Item(key, value as T)
                 }
@@ -274,12 +289,12 @@ open class PreferencesManager(
      * @param defaultValue the default value if the array doesn't exist or has a different type
      * @return the array value or the default value
      */
-    fun getList(key: String, defaultValue: List<String>): List<String> {
+    fun <T> getList(key: String, defaultValue: List<T>): List<T> {
         val array = mArrays?.get(key)?.jsonArray
         return if (array != null) {
             try {
                 array.mapNotNull { element ->
-                    element.jsonPrimitive.content
+                    element.jsonPrimitive.content as? T
                 }
             } catch (e: Exception) {
                 defaultValue
@@ -289,6 +304,7 @@ open class PreferencesManager(
         }
     }
 
+
     /**
      * Put an array value in the preferences file.
      *
@@ -296,7 +312,7 @@ open class PreferencesManager(
      * @param value the array value
      */
     @OptIn(InternalSerializationApi::class)
-    fun putList(key: String, value: List<String>) {
+    fun <T : Any> putList(key: String, value: List<T>) {
         val newArray = buildJsonObject {
             if (mArrays != null) {
                 mArrays?.forEach { (k, v) ->
@@ -306,8 +322,8 @@ open class PreferencesManager(
                 mArrays = buildJsonObject {}
             }
             put(key, buildJsonArray {
-                value.forEach {
-                    add(Json.encodeToJsonElement(String::class.serializer(), it))
+                value.forEach { element ->
+                    add(Json.encodeToJsonElement(String::class.serializer(), element.toString()))
                 }
             })
         }
@@ -490,6 +506,28 @@ open class PreferencesManager(
     fun putDouble(key: String, value: Double) {
         mDoubles = putValue(mDoubles, key, value).also {
             updateJson(DOUBLES, it)
+        }
+    }
+
+    /**
+     * Get Short Value
+     *
+     * @param key          of value
+     * @param defaultValue if absent
+     */
+    fun getShort(key: String, defaultValue: Short): Short {
+        return mShorts?.get(key)?.jsonPrimitive?.content?.toShortOrNull() ?: defaultValue
+    }
+
+    /**
+     * Save Short Value
+     *
+     * @param key   of value
+     * @param value to store
+     */
+    fun putShort(key: String, value: Short) {
+        mShorts = putValue(mShorts, key, value).also {
+            updateJson(SHORTS, it)
         }
     }
 
