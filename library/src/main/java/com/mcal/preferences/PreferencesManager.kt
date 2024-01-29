@@ -1,23 +1,24 @@
 package com.mcal.preferences
 
-import com.mcal.preferences.utils.Extensions.formatJson
-import com.mcal.preferences.utils.Extensions.tryDeserialize
-import com.mcal.preferences.utils.FileHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer
 import java.io.*
+import java.nio.charset.StandardCharsets
 import java.util.*
-import kotlin.reflect.KClass
 
 open class PreferencesManager(
     private val dir: File,
     private val name: String
-) : Preferences {
+) {
     companion object {
         private const val INTEGERS = "integers"
         private const val STRINGS = "strings"
+        private const val CHARS = "chars"
+        private const val BYTES = "bytes"
         private const val BOOLEANS = "booleans"
         private const val FLOATS = "floats"
         private const val DOUBLES = "doubles"
@@ -26,9 +27,13 @@ open class PreferencesManager(
         private const val ARRAYS = "arrays"
     }
 
+    private val mJson = Json { prettyPrint = true }
+
     private var mJsonObject = buildJsonObject { }
     private var mIntegers: JsonObject? = null
     private var mStrings: JsonObject? = null
+    private var mChars: JsonObject? = null
+    private var mBytes: JsonObject? = null
     private var mBooleans: JsonObject? = null
     private var mFloats: JsonObject? = null
     private var mDoubles: JsonObject? = null
@@ -59,7 +64,7 @@ open class PreferencesManager(
     @Throws(IOException::class)
     private fun loadJSON(file: File) {
         mJsonObject = runCatching {
-            val content = FileHelper.readText(file)
+            val content = file.inputStream().readBytes().toString(StandardCharsets.UTF_8)
             Json.parseToJsonElement(content) as JsonObject
         }.getOrElse {
             buildJsonObject { }
@@ -72,6 +77,8 @@ open class PreferencesManager(
     private fun checkJson() {
         mIntegers = mIntegers ?: ifNotExist(INTEGERS)
         mStrings = mStrings ?: ifNotExist(STRINGS)
+        mChars = mChars ?: ifNotExist(CHARS)
+        mBytes = mBytes ?: ifNotExist(BYTES)
         mBooleans = mBooleans ?: ifNotExist(BOOLEANS)
         mFloats = mFloats ?: ifNotExist(FLOATS)
         mDoubles = mDoubles ?: ifNotExist(DOUBLES)
@@ -100,10 +107,12 @@ open class PreferencesManager(
      * Write each change on the file
      */
     private fun updateMemory() {
-        runBlocking {
-            val prefFile = File(dir, name)
-            val jsonString = mJsonObject.toString().formatJson()
-            FileHelper.writeTextAsync(prefFile, jsonString)
+        runBlocking(Dispatchers.IO) {
+            File(dir, name).writeBytes(
+                mJson.encodeToString(Json.parseToJsonElement(mJsonObject.toString())).toByteArray(
+                    StandardCharsets.UTF_8
+                )
+            )
         }
     }
 
@@ -201,40 +210,22 @@ open class PreferencesManager(
     /**
      * Iterate a kind of values (String, Boolean , Integer ..)
      */
-    fun <T> iterator(c: Class<Any?>): MutableIterator<Item<T>?>? {
-        val obj: JsonObject?
-        when (c) {
-            Int::class.java -> {
-                obj = mIntegers
-            }
-
-            Float::class.java -> {
-                obj = mFloats
-            }
-
-            Boolean::class.java -> {
-                obj = mBooleans
-            }
-
-            String::class.java -> {
-                obj = mStrings
-            }
-
-            Double::class.java -> {
-                obj = mDoubles
-            }
-
-            List::class.java -> {
-                obj = mArrays
-            }
-
-            else -> {
-                obj = mObjects
-            }
+    fun <T> iterator(c: Class<T>): MutableIterator<Item<T>?>? {
+        val obj: JsonObject? = when (c) {
+            Char::class.java -> mChars
+            Byte::class.java -> mBytes
+            Int::class.java -> mIntegers
+            Float::class.java -> mFloats
+            Boolean::class.java -> mBooleans
+            String::class.java -> mStrings
+            Double::class.java -> mDoubles
+            List::class.java -> mArrays
+            else -> mObjects
         }
-        if (obj != null) {
+
+        return if (!obj.isNullOrEmpty()) {
             val keysIterator = obj.keys.iterator()
-            return object : MutableIterator<Item<T>?> {
+            object : MutableIterator<Item<T>?> {
                 override fun hasNext(): Boolean {
                     return keysIterator.hasNext()
                 }
@@ -242,68 +233,29 @@ open class PreferencesManager(
                 @Suppress("UNCHECKED_CAST")
                 override fun next(): Item<T> {
                     val key = keysIterator.next()
-                    return Item(key, obj[key] as T)
+                    val value = when (c) {
+                        Char::class.java -> getChar(key, ' ') as? T
+                        Byte::class.java -> getByte(key, "0".toByte()) as? T
+                        Int::class.java -> getInt(key, 0) as? T
+                        Float::class.java -> getFloat(key, 0f) as? T
+                        Boolean::class.java -> getBoolean(key, false) as? T
+                        String::class.java -> getString(key, "") as? T
+                        Double::class.java -> getDouble(key, 0.0) as? T
+                        List::class.java -> getList(key, emptyList()) as? T
+                        else -> getObject(key, null) as? T
+                    }
+                    return Item(key, value as T)
                 }
 
                 override fun remove() {
                     throw UnsupportedOperationException()
                 }
             }
-        }
-        return null
-    }
-
-    /**
-     * Get the value of a key as an array
-     *
-     * @param key the key of the array
-     * @param defaultValue the default value if the array doesn't exist or has a different type
-     * @param T the type of the array elements
-     * @return the array value or the default value
-     */
-    override fun <T : Any> getArray(key: String, defaultValue: List<T>, elementClass: KClass<T>): List<T> {
-        val array = mArrays?.get(key)?.jsonArray
-        return if (array != null) {
-            try {
-                array.mapNotNull { element ->
-                    element.jsonPrimitive.tryDeserialize(elementClass)
-                }
-            } catch (e: Exception) {
-                defaultValue
-            }
         } else {
-            defaultValue
+            null
         }
     }
 
-    /**
-     * Put an array value in the preferences file.
-     *
-     * @param key the key of the array
-     * @param value the array value
-     * @param elementClass the class of the array elements
-     */
-    @OptIn(InternalSerializationApi::class)
-    override fun <T : Any> putArray(key: String, value: List<T>, elementClass: KClass<T>) {
-        val newArray = buildJsonObject {
-            if (mArrays != null) {
-                mArrays?.forEach { (k, v) ->
-                    put(k, v)
-                }
-            } else {
-                mArrays = buildJsonObject {}
-            }
-            put(key, buildJsonArray {
-                value.forEach {
-                    add(Json.encodeToJsonElement(elementClass.serializer(), it))
-                }
-            })
-        }
-        mArrays = newArray.also { objects ->
-            updateJson(ARRAYS, objects)
-        }
-        updateMemory()
-    }
 
     /**
      * Get the value of a key as an array
@@ -312,12 +264,12 @@ open class PreferencesManager(
      * @param defaultValue the default value if the array doesn't exist or has a different type
      * @return the array value or the default value
      */
-    override fun getList(key: String, defaultValue: List<String>): List<String> {
+    fun getList(key: String, defaultValue: List<String>): List<String> {
         val array = mArrays?.get(key)?.jsonArray
         return if (array != null) {
             try {
                 array.mapNotNull { element ->
-                    element.jsonPrimitive.tryDeserialize(String::class)
+                    element.jsonPrimitive.content
                 }
             } catch (e: Exception) {
                 defaultValue
@@ -334,7 +286,7 @@ open class PreferencesManager(
      * @param value the array value
      */
     @OptIn(InternalSerializationApi::class)
-    override fun putList(key: String, value: List<String>) {
+    fun putList(key: String, value: List<String>) {
         val newArray = buildJsonObject {
             if (mArrays != null) {
                 mArrays?.forEach { (k, v) ->
@@ -361,7 +313,7 @@ open class PreferencesManager(
      * @param key          of value
      * @param defaultValue if absent
      */
-    override fun getString(key: String, defaultValue: String): String {
+    fun getString(key: String, defaultValue: String): String {
         return mStrings?.get(key)?.jsonPrimitive?.content ?: defaultValue
     }
 
@@ -371,9 +323,29 @@ open class PreferencesManager(
      * @param key   of value
      * @param value to store
      */
-    override fun putString(key: String, value: String) {
+    fun putString(key: String, value: String) {
         mStrings = putValue(mStrings, key, value).also {
             updateJson(STRINGS, it)
+        }
+    }
+
+    fun getChar(key: String, defaultValue: Char): Char {
+        return mChars?.get(key)?.jsonPrimitive?.content?.first() ?: defaultValue
+    }
+
+    fun putChar(key: String, value: Char) {
+        mChars = putValue(mChars, key, value).also {
+            updateJson(CHARS, it)
+        }
+    }
+
+    fun getByte(key: String, defaultValue: Byte): Byte {
+        return mBytes?.get(key)?.jsonPrimitive?.content?.toByte() ?: defaultValue
+    }
+
+    fun putByte(key: String, value: Byte) {
+        mBytes = putValue(mBytes, key, value).also {
+            updateJson(BYTES, it)
         }
     }
 
@@ -383,7 +355,7 @@ open class PreferencesManager(
      * @param key          of value
      * @param defaultValue if absent
      */
-    override fun getBoolean(key: String, defaultValue: Boolean): Boolean {
+    fun getBoolean(key: String, defaultValue: Boolean): Boolean {
         return mBooleans?.get(key)?.jsonPrimitive?.boolean ?: defaultValue
     }
 
@@ -393,7 +365,7 @@ open class PreferencesManager(
      * @param key   of value
      * @param value to store
      */
-    override fun putBoolean(key: String, value: Boolean) {
+    fun putBoolean(key: String, value: Boolean) {
         mBooleans = putValue(mBooleans, key, value).also {
             updateJson(BOOLEANS, it)
         }
@@ -405,7 +377,7 @@ open class PreferencesManager(
      * @param key          of value
      * @param defaultValue if absent
      */
-    override fun getLong(key: String, defaultValue: Long): Long {
+    fun getLong(key: String, defaultValue: Long): Long {
         return mLongs?.get(key)?.jsonPrimitive?.long ?: defaultValue
     }
 
@@ -415,7 +387,7 @@ open class PreferencesManager(
      * @param key   of value
      * @param value to store
      */
-    override fun putLong(key: String, value: Long) {
+    fun putLong(key: String, value: Long) {
         mLongs = putValue(mLongs, key, value).also {
             updateJson(LONGS, it)
         }
@@ -427,7 +399,7 @@ open class PreferencesManager(
      * @param key          of value
      * @param defaultValue if absent
      */
-    override fun getInt(key: String, defaultValue: Int): Int {
+    fun getInt(key: String, defaultValue: Int): Int {
         return mIntegers?.get(key)?.jsonPrimitive?.int ?: defaultValue
     }
 
@@ -437,7 +409,7 @@ open class PreferencesManager(
      * @param key   of value
      * @param value to store
      */
-    override fun putInt(key: String, value: Int) {
+    fun putInt(key: String, value: Int) {
         mIntegers = putValue(mIntegers, key, value).also {
             updateJson(INTEGERS, it)
         }
@@ -449,7 +421,7 @@ open class PreferencesManager(
      * @param key          of value
      * @param defaultValue if absent
      */
-    override fun getFloat(key: String, defaultValue: Float): Float {
+    fun getFloat(key: String, defaultValue: Float): Float {
         return mFloats?.get(key)?.jsonPrimitive?.float ?: defaultValue
     }
 
@@ -459,7 +431,7 @@ open class PreferencesManager(
      * @param key   of value
      * @param value to store
      */
-    override fun putFloat(key: String, value: Float) {
+    fun putFloat(key: String, value: Float) {
         mFloats = putValue(mFloats, key, value).also {
             updateJson(FLOATS, it)
         }
@@ -471,7 +443,7 @@ open class PreferencesManager(
      * @param key          of value
      * @param defaultValue if absent
      */
-    override fun getDouble(key: String, defaultValue: Double): Double {
+    fun getDouble(key: String, defaultValue: Double): Double {
         return mDoubles?.get(key)?.jsonPrimitive?.double ?: defaultValue
     }
 
@@ -481,7 +453,7 @@ open class PreferencesManager(
      * @param key   of value
      * @param value to store
      */
-    override fun putDouble(key: String, value: Double) {
+    fun putDouble(key: String, value: Double) {
         mDoubles = putValue(mDoubles, key, value).also {
             updateJson(DOUBLES, it)
         }
@@ -493,7 +465,8 @@ open class PreferencesManager(
      * @param key          of value
      * @param defaultValue if absent
      */
-    override fun <T> getObject(key: String, defaultValue: T): T {
+    @Suppress("UNCHECKED_CAST")
+    fun <T> getObject(key: String, defaultValue: T): T {
         var result: T? = null
         try {
             val objects = mObjects
@@ -519,7 +492,7 @@ open class PreferencesManager(
      * @param key   of value
      * @param value to store
      */
-    override fun <T : Serializable?> putObject(key: String, value: T) {
+    fun <T : Serializable> putObject(key: String, value: T) {
         val outputName = File(dir, File.separator + key.lowercase(Locale.getDefault()) + ".data")
         try {
             ObjectOutputStream(FileOutputStream(outputName)).use {
