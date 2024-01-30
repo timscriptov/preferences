@@ -29,7 +29,7 @@ open class PreferencesManager(
         private const val OBJECTS = "objects"
     }
 
-    private val mJson = Json { prettyPrint = true }
+    private val mJson = Json// { prettyPrint = true }
 
     private var mJsonObject = buildJsonObject { }
 
@@ -177,7 +177,7 @@ open class PreferencesManager(
                 override fun next(): Item<T> {
                     val key = keysIterator.next()
                     val value = when (c) {
-                        List::class.java -> getList(key, emptyList<String>()) as? T
+                        List::class.java -> getList(key, emptyList<T>()) as? T
                         String::class.java -> getString(key, "") as? T
                         Char::class.java -> getChar(key, ' ') as? T
                         Byte::class.java -> getByte(key, "0".toByte()) as? T
@@ -333,7 +333,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putString(key: String, value: String) {
-        mStrings = putValue(mStrings, key, value).also {
+        mStrings = buildJsonObject {
+            mStrings?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(STRINGS, it)
         }
     }
@@ -377,7 +382,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putByte(key: String, value: Byte) {
-        mBytes = putValue(mBytes, key, value).also {
+        mBytes = buildJsonObject {
+            mBytes?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(BYTES, it)
         }
     }
@@ -399,7 +409,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putBoolean(key: String, value: Boolean) {
-        mBooleans = putValue(mBooleans, key, value).also {
+        mBooleans = buildJsonObject {
+            mBooleans?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(BOOLEANS, it)
         }
     }
@@ -421,7 +436,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putLong(key: String, value: Long) {
-        mLongs = putValue(mLongs, key, value).also {
+        mLongs = buildJsonObject {
+            mLongs?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(LONGS, it)
         }
     }
@@ -443,7 +463,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putInt(key: String, value: Int) {
-        mIntegers = putValue(mIntegers, key, value).also {
+        mIntegers = buildJsonObject {
+            mIntegers?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(INTEGERS, it)
         }
     }
@@ -465,7 +490,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putFloat(key: String, value: Float) {
-        mFloats = putValue(mFloats, key, value).also {
+        mFloats = buildJsonObject {
+            mFloats?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(FLOATS, it)
         }
     }
@@ -487,7 +517,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putDouble(key: String, value: Double) {
-        mDoubles = putValue(mDoubles, key, value).also {
+        mDoubles = buildJsonObject {
+            mDoubles?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(DOUBLES, it)
         }
     }
@@ -509,7 +544,12 @@ open class PreferencesManager(
      * @param value to store
      */
     fun putShort(key: String, value: Short) {
-        mShorts = putValue(mShorts, key, value).also {
+        mShorts = buildJsonObject {
+            mShorts?.forEach { (k, v) ->
+                put(k, v)
+            }
+            put(key, JsonPrimitive(value))
+        }.also {
             updateJson(SHORTS, it)
         }
     }
