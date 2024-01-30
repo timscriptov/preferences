@@ -137,7 +137,7 @@ fun testIterator() {
             println("       Key: ${item?.key}, Value: ${item?.value}")
         }
     }.onFailure {
-        println("       Failed")
+        println(it)
     }
 }
 
