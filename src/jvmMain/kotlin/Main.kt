@@ -29,16 +29,10 @@ fun App() {
 }
 
 fun main() = application {
-    println("\nDOUBLE:")
-    doubleTest()
-    println("\nFLOAT:")
-    floatTest()
-    println("\nLONG:")
-    longTest()
-    println("\nINT:")
-    intTest()
     println("\nARRAY:")
     arrayTest()
+    println("\nARRAY TYPE:")
+    arrayTypeTest()
     println("\nSTRING:")
     stringTest()
     println("\nCHAR:")
@@ -47,11 +41,24 @@ fun main() = application {
     byteTest()
     println("\nBOOLEAN:")
     booleanTest()
-//    println("\nObject:")
-//    objectTest()
+    println("\nLONG:")
+    longTest()
+    println("\nINT:")
+    intTest()
+    println("\nFLOAT:")
+    floatTest()
+    println("\nDOUBLE:")
+    doubleTest()
+    println("\nSHORT:")
+    shortTest()
+    println("\nOBJECT:")
+    runCatching {
+        objectTest()
+    }.onFailure {
+        println(it)
+    }
     println("\nITERATOR:")
     testIterator()
-
     Window(
         title = "Ex Preferences",
         state = rememberWindowState(width = 800.dp, height = 600.dp),
@@ -62,9 +69,17 @@ fun main() = application {
     }
 }
 
+fun shortTest() {
+    var test by shortDelegate("test", 0)
+    println(test)
+    test = 2
+    println(test)
+    val test2 by shortDelegate("test", 0)
+    println(test2)
+}
+
 fun testIterator() {
     val manager = PreferencesManager(getWorkingDir(), "preferences.json")
-
     println("   DOUBLE:")
     val doubleIterator = manager.iterator(Double::class.java)
     doubleIterator?.forEach { item ->
@@ -80,7 +95,6 @@ fun testIterator() {
     booleanIterator?.forEach { item ->
         println("       Key: ${item?.key}, Value: ${item?.value}")
     }
-
     println("   LIST:")
     val listIterator = manager.iterator(List::class.java)
     listIterator?.forEach { item ->
@@ -138,82 +152,152 @@ fun objectTest() {
 }
 
 fun booleanTest() {
-    var test by booleanDelegate("test", false)
+    var test by booleanDelegate("boolean", false)
     println(test)
     test = true
     println(test)
-    val test2 by booleanDelegate("test", false)
-    println(test2)
 }
 
 fun floatTest() {
-    var test by floatDelegate("test", 0f)
+    var test by floatDelegate("float", 0f)
     println(test)
     test = 1999f
     println(test)
-    val test2 by floatDelegate("test", 0f)
-    println(test2)
 }
 
 fun doubleTest() {
-    var test by doubleDelegate("test", 0.0)
+    var test by doubleDelegate("double", 0.0)
     println(test)
     test = 4499.0
     println(test)
-    val test2 by doubleDelegate("test", 0.0)
-    println(test2)
 }
 
 fun longTest() {
-    var test by longDelegate("test", 0L)
+    var test by longDelegate("long", 0L)
     println(test)
     test = 1000L
     println(test)
-    val test2 by longDelegate("test", 0L)
-    println(test2)
 }
 
 fun intTest() {
-    var test by intDelegate("test", 0)
+    var test by intDelegate("int", 0)
     println(test)
     test = 6
     println(test)
-    val test2 by intDelegate("test", 0)
-    println(test2)
+}
+
+fun arrayTypeTest() {
+    val manager = PreferencesManager(getWorkingDir(), "preferences.json")
+
+    val str = manager.getList("string", listOf("1", "2", "3"), String::class)
+    println(str)
+    manager.putList("string", listOf("4", "8", "9", "10"), String::class)
+    println(str)
+
+    val ch = manager.getList("char", listOf('1', '2', '3'), Char::class)
+    println(ch)
+    manager.putList("char", listOf('4', '8', '9', 'A'), Char::class)
+    println(ch)
+
+    val b = manager.getList("byte", listOf('1'.code.toByte(), '2'.code.toByte(), '3'.code.toByte()), Byte::class)
+    println(b)
+    manager.putList("byte", listOf('4'.code.toByte(), '8'.code.toByte(), 'A'.code.toByte()), Byte::class)
+    println(b)
+
+    val bool = manager.getList("bool", listOf(true, true, false), Boolean::class)
+    println(bool)
+    manager.putList("bool", listOf(false, false, false, true), Boolean::class)
+    println(bool)
+
+    val l = manager.getList("long", listOf(1, 2, 3L), Long::class)
+    println(l)
+    manager.putList("long", listOf(4, 8, 90L, 1000), Long::class)
+    println(l)
+
+    val test = manager.getList("int", listOf(1, 2, 3), Int::class)
+    println(test)
+    manager.putList("int", listOf(4, 8, 9, 10), Int::class)
+    println(test)
+
+    val f = manager.getList("float", listOf(1f, 2.1f, 3f), Float::class)
+    println(f)
+    manager.putList("float", listOf(4.8f, 8f, 9f, 10f), Float::class)
+    println(f)
+
+    val d = manager.getList("double", listOf(1.2, 2.1, 3.0), Double::class)
+    println(d)
+    manager.putList("double", listOf(4.8 + 2.0, 8.2, 9.23, 10.999), Double::class)
+    println(d)
+
+    val test3 = manager.getList("short", listOf(0, 1, 2), Short::class)
+    println(test3)
+    manager.putList("short", listOf(3, 4, 5, 6), Short::class)
+    println(test3)
 }
 
 fun arrayTest() {
-    var test by listDelegate("test2", listOf(1, 2, 3))
-    println(test)
-    test = listOf(4, 5, 6)
-    println(test)
-    val test2 by listDelegate("test", listOf("1", "2", "3"))
-    println(test2)
+    var str by listDelegate("string1", listOf("1", "2", "3"))
+    println(str)
+    str = listOf("12342342")
+
+    var c by listDelegate("char1", listOf('1', '2', '3'))
+    println(c)
+    c = listOf('4', '5', '6')
+    println(c)
+
+    var b by listDelegate("byte1", listOf('1'.code.toByte(), '2'.code.toByte(), '3'.code.toByte()))
+    println(b)
+    b = listOf('4'.code.toByte(), '8'.code.toByte(), 'A'.code.toByte())
+    println(b)
+
+    var bool by listDelegate("bool1", listOf(true, true, false))
+    println(bool)
+    bool = (listOf(false, false, false, true))
+    println(bool)
+
+    var l by listDelegate("long1", listOf(1, 2, 3L))
+    println(l)
+    l = (listOf(4, 8, 90L, 1000))
+    println(l)
+
+    var i by listDelegate("int1", listOf(1, 2, 3))
+    println(i)
+    i = listOf(4, 5, 6)
+    println(i)
+
+    var f by listDelegate("float1", listOf(1f, 2.1f, 3f))
+    println(f)
+    f = (listOf(4.8f, 8f, 9f, 10f))
+    println(f)
+
+    var d by listDelegate("double1", listOf(1.2, 2.1, 3.0))
+    println(d)
+    d = (listOf(4.8 + 2.0, 8.2, 9.23, 10.999))
+    println(d)
+
+    var s by listDelegate("short1", listOf(0.toShort(), 1, 2))
+    println(s)
+    s = (listOf(3.toShort(), 4, 5, 6))
+    println(s)
 }
 
 fun byteTest() {
-    var test by byteDelegate("test", 'a'.code.toByte())
+    var test by byteDelegate("byte", 'a'.code.toByte())
     println(test)
     test = 'b'.code.toByte()
     println(test)
-    val test2 by byteDelegate("test", 'a'.code.toByte())
-    println(test2)
 }
 
 fun charTest() {
-    var test by charDelegate("test", 'a')
+    var test by charDelegate("char", 'a')
     println(test)
     test = 'b'
     println(test)
-    val test2 by charDelegate("test", 'a')
-    println(test2)
 }
 
 fun stringTest() {
-    var test by stringDelegate("test", "def")
+    var test by stringDelegate("string", "def")
     println(test)
     test = "lol"
     println(test)
-    val test2 by stringDelegate("test", "def")
-    println(test2)
 }

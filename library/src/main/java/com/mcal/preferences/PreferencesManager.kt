@@ -9,6 +9,7 @@ import kotlinx.serialization.serializer
 import java.io.*
 import java.nio.charset.StandardCharsets
 import java.util.*
+import kotlin.reflect.KClass
 
 open class PreferencesManager(
     private val dir: File,
@@ -68,8 +69,10 @@ open class PreferencesManager(
     @Throws(IOException::class)
     private fun loadJSON(file: File) {
         mJsonObject = runCatching {
-            val content = file.inputStream().readBytes().toString(StandardCharsets.UTF_8)
-            Json.parseToJsonElement(content) as JsonObject
+            runBlocking(Dispatchers.IO) {
+                val content = file.inputStream().readBytes().toString(StandardCharsets.UTF_8)
+                Json.parseToJsonElement(content) as JsonObject
+            }
         }.getOrElse {
             buildJsonObject { }
         }
@@ -121,6 +124,14 @@ open class PreferencesManager(
         }
     }
 
+    /**
+     * Updates the JSON object associated with a specific key.
+     * If the key already exists in the object, it updates the value;
+     * otherwise, it adds the key-value pair to the object.
+     *
+     * @param key The key within the JSON object to be updated or added.
+     * @param newObject The new JsonObject to be associated with the specified key.
+     */
     private fun updateJson(key: String, newObject: JsonObject) {
         val json = mJsonObject
         val updatedJson = buildJsonObject {
@@ -137,95 +148,6 @@ open class PreferencesManager(
         }
         mJsonObject = updatedJson
         updateMemory()
-    }
-
-    /**
-     * Remove all values with same key
-     *
-     * @param key of values to remove
-     */
-    fun remove(key: String) {
-        mArrays = removeValue(mArrays, key)
-        mStrings = removeValue(mStrings, key)
-        mChars = removeValue(mChars, key)
-        mBytes = removeValue(mBytes, key)
-        mBooleans = removeValue(mBooleans, key)
-        mLongs = removeValue(mLongs, key)
-        mIntegers = removeValue(mIntegers, key)
-        mFloats = removeValue(mFloats, key)
-        mDoubles = removeValue(mDoubles, key)
-        mShorts = removeValue(mShorts, key)
-        mObjects = removeValue(mObjects, key)
-        updateMemory()
-    }
-
-    /**
-     * Remove value with that key and class (to prevent multiple values deletions)
-     *
-     * @param key of value
-     * @param c   class of value
-     */
-    fun remove(key: String, c: Class<Any>) {
-        when (c) {
-            List::class.java -> {
-                mArrays = removeValue(mArrays, key)
-            }
-
-            String::class.java -> {
-                mStrings = removeValue(mStrings, key)
-            }
-
-            Char::class.java -> {
-                mChars = removeValue(mChars, key)
-            }
-
-            Byte::class.java -> {
-                mBytes = removeValue(mBytes, key)
-            }
-
-            Boolean::class.java -> {
-                mBooleans = removeValue(mBooleans, key)
-            }
-
-            Long::class.java -> {
-                mLongs = removeValue(mLongs, key)
-            }
-
-            Int::class.java -> {
-                mIntegers = removeValue(mIntegers, key)
-            }
-
-            Float::class.java -> {
-                mFloats = removeValue(mFloats, key)
-            }
-
-            Double::class.java -> {
-                mDoubles = removeValue(mDoubles, key)
-            }
-
-            Short::class.java -> {
-                mShorts = removeValue(mShorts, key)
-            }
-
-            else -> {
-                mObjects = removeValue(mObjects, key)
-            }
-        }
-        updateMemory()
-    }
-
-    private fun removeValue(json: JsonObject?, key: String): JsonObject? {
-        return if (json != null && json.containsKey(key)) {
-            buildJsonObject {
-                json.filterKeys { it != key }.forEach { (k, v) ->
-                    put(k, v)
-                }
-            }.also {
-                mJsonObject = it
-            }
-        } else {
-            json
-        }
     }
 
     /**
@@ -253,7 +175,6 @@ open class PreferencesManager(
                     return keysIterator.hasNext()
                 }
 
-                @Suppress("UNCHECKED_CAST")
                 override fun next(): Item<T> {
                     val key = keysIterator.next()
                     val value = when (c) {
@@ -304,7 +225,6 @@ open class PreferencesManager(
         }
     }
 
-
     /**
      * Put an array value in the preferences file.
      *
@@ -314,8 +234,9 @@ open class PreferencesManager(
     @OptIn(InternalSerializationApi::class)
     fun <T : Any> putList(key: String, value: List<T>) {
         val newArray = buildJsonObject {
-            if (mArrays != null) {
-                mArrays?.forEach { (k, v) ->
+            val arrays = mArrays
+            if (arrays != null) {
+                arrays.forEach { (k, v) ->
                     put(k, v)
                 }
             } else {
@@ -324,6 +245,70 @@ open class PreferencesManager(
             put(key, buildJsonArray {
                 value.forEach { element ->
                     add(Json.encodeToJsonElement(String::class.serializer(), element.toString()))
+                }
+            })
+        }
+        mArrays = newArray.also { objects ->
+            updateJson(ARRAYS, objects)
+        }
+        updateMemory()
+    }
+
+    /**
+     * Get the value of a key as an array
+     *
+     * @param key the key of the array
+     * @param defaultValue the default value if the array doesn't exist or has a different type
+     * @param T the type of the array elements
+     * @return the array value or the default value
+     */
+    fun <T : Any> getList(key: String, defaultValue: List<T> = emptyList(), elementClass: KClass<T>): List<T> {
+        val array = mArrays?.get(key)?.jsonArray
+        return if (array != null) {
+            try {
+                array.mapNotNull { element ->
+                    when (elementClass) {
+                        String::class -> element.jsonPrimitive.content
+                        Char::class -> element.jsonPrimitive.content.firstOrNull()
+                        Byte::class -> element.jsonPrimitive.content.toByteOrNull()
+                        Boolean::class -> element.jsonPrimitive.content.toBoolean()
+                        Long::class -> element.jsonPrimitive.content.toLongOrNull()
+                        Int::class -> element.jsonPrimitive.content.toIntOrNull()
+                        Float::class -> element.jsonPrimitive.content.toFloatOrNull()
+                        Double::class -> element.jsonPrimitive.content.toDoubleOrNull()
+                        Short::class -> element.jsonPrimitive.content.toShortOrNull()
+                        else -> null
+                    } as? T
+                }
+            } catch (e: Exception) {
+                defaultValue
+            }
+        } else {
+            defaultValue
+        }
+    }
+
+    /**
+     * Put an array value in the preferences file.
+     *
+     * @param key the key of the array
+     * @param value the array value
+     * @param elementClass the class of the array elements
+     */
+    @OptIn(InternalSerializationApi::class)
+    fun <T : Any> putList(key: String, value: List<T>, elementClass: KClass<T>) {
+        val newArray = buildJsonObject {
+            val arrays = mArrays
+            if (arrays != null) {
+                arrays.forEach { (k, v) ->
+                    put(k, v)
+                }
+            } else {
+                mArrays = buildJsonObject {}
+            }
+            put(key, buildJsonArray {
+                value.forEach {
+                    add(Json.encodeToJsonElement(elementClass.serializer(), it))
                 }
             })
         }
@@ -545,8 +530,11 @@ open class PreferencesManager(
             if (objects != null) {
                 val filePath = objects[key]?.jsonPrimitive?.content
                 if (filePath != null) {
-                    ObjectInputStream(FileInputStream(filePath)).use {
-                        result = it.readObject() as T
+                    val file = File(filePath)
+                    if (file.exists()) {
+                        ObjectInputStream(FileInputStream(filePath)).use {
+                            result = it.readObject() as T
+                        }
                     }
                 }
             }
@@ -569,10 +557,9 @@ open class PreferencesManager(
         try {
             ObjectOutputStream(FileOutputStream(outputName)).use {
                 it.writeObject(value)
-            }.also {
-                mObjects = putValue(mObjects, key, outputName).also { objects ->
-                    updateJson(OBJECTS, objects)
-                }
+            }
+            mObjects = putValue(mObjects, key, outputName).also {
+                updateJson(OBJECTS, it)
             }
         } catch (e: IOException) {
             e.printStackTrace()

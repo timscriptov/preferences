@@ -36,7 +36,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "preferences"
-            packageVersion = "1.0.4"
+            packageVersion = "1.0.5"
             description = "Template"
             copyright = "© 2023 timscriptov."
             vendor = "timscriptov"
