@@ -1,7 +1,5 @@
 package com.mcal.preferences
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -68,10 +66,8 @@ open class PreferencesManager(
     @Throws(IOException::class)
     private fun loadJSON(file: File) {
         mJsonObject = runCatching {
-            runBlocking(Dispatchers.IO) {
-                val content = file.inputStream().readBytes().toString(StandardCharsets.UTF_8)
-                Json.parseToJsonElement(content) as JsonObject
-            }
+            val content = file.inputStream().readBytes().toString(StandardCharsets.UTF_8)
+            Json.parseToJsonElement(content) as JsonObject
         }.getOrElse {
             buildJsonObject { }
         }
@@ -114,13 +110,11 @@ open class PreferencesManager(
      * Write each change on the file
      */
     private fun updateMemory() {
-        runBlocking(Dispatchers.IO) {
-            File(dir, name).writeBytes(
-                mJson.encodeToString(Json.parseToJsonElement(mJsonObject.toString())).toByteArray(
-                    StandardCharsets.UTF_8
-                )
+        File(dir, name).writeBytes(
+            mJson.encodeToString(Json.parseToJsonElement(mJsonObject.toString())).toByteArray(
+                StandardCharsets.UTF_8
             )
-        }
+        )
     }
 
     /**
