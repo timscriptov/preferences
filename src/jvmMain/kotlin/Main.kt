@@ -130,6 +130,15 @@ fun testIterator() {
     shortIterator?.forEach { item ->
         println("       Key: ${item?.key}, Value: ${item?.value}")
     }
+    println("   OBJECT:")
+    runCatching {
+        val objectIterator = manager.iterator(Date::class.java)
+        objectIterator?.forEach { item ->
+            println("       Key: ${item?.key}, Value: ${item?.value}")
+        }
+    }.onFailure {
+        println("       Failed")
+    }
 }
 
 class Test {
