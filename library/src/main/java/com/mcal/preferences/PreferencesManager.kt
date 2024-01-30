@@ -45,7 +45,6 @@ open class PreferencesManager(
     private var mShorts: JsonObject? = null
     private var mObjects: JsonObject? = null
 
-
     /**
      * Read content from data file
      */
@@ -201,7 +200,6 @@ open class PreferencesManager(
             null
         }
     }
-
 
     /**
      * Get the value of a key as an array
